@@ -1,0 +1,29 @@
+/target/
+.idea/
+.vscode/
+.settings
+.project
+.classpath
+*.iml
+.DS_Store
+
+# Archivos generados por Vaadin
+node_modules/
+src/main/frontend/generated/
+vite.generated.ts
+
+# Archivos temporales y errores
+*.log
+hs_err_pid*
+replay_pid*
+
+# Archivos pendientes de los compañeros
+/src/main/java/com/example/model/DetalleVenta.java
+/src/main/java/com/example/model/Venta.java
+/src/main/java/com/example/model/FormulaMedicamento.java
+/src/main/java/com/example/model/Formula.java
+
+# Configuración con credenciales privadas
+/src/main/resources/application.properties
+
+.gemini/

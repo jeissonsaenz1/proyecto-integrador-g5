@@ -1,7 +1,11 @@
 
 package com.example;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.time.LocalDateTime;
+
+import org.openpdf.text.DocumentException;
 
 import com.example.model.DetalleVenta;
 import com.example.model.Formula;
@@ -11,6 +15,9 @@ import com.example.model.Laboratorio;
 import com.example.model.Medicamento;
 import com.example.model.Venta;
 import com.example.service.CrudService;
+import com.example.service.ReporteExcelService;
+import com.example.service.ReportePdfService;
+import com.example.service.InventarioVentaService;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.checkbox.Checkbox;
@@ -18,6 +25,7 @@ import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.datetimepicker.DateTimePicker;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -26,12 +34,16 @@ import com.vaadin.flow.component.tabs.TabSheet;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.server.StreamResource;
 
 @PageTitle("FarmaCare")
 @Route("")
 public class MainView extends VerticalLayout {
 
     private final CrudService crudService;
+    private final ReporteExcelService reporteExcelService;
+    private final ReportePdfService reportePdfService;
+    private final InventarioVentaService inventarioVentaService;
 
     // =====================================
     // LABORATORIOS
@@ -158,9 +170,16 @@ public class MainView extends VerticalLayout {
     // CONSTRUCTOR
     // =====================================
 
-    public MainView(CrudService crudService) {
+    public MainView(
+            CrudService crudService,
+            ReporteExcelService reporteExcelService,
+            ReportePdfService reportePdfService,
+            InventarioVentaService inventarioVentaService) {
 
         this.crudService = crudService;
+        this.reporteExcelService = reporteExcelService;
+        this.reportePdfService = reportePdfService;
+        this.inventarioVentaService = inventarioVentaService;
 
         setSizeFull();
         setPadding(true);
@@ -215,7 +234,24 @@ public class MainView extends VerticalLayout {
                 activoLaboratorio
         );
 
-        Button guardar = new Button("Guardar", e -> guardarLaboratorio());
+        Button nuevo = new Button("Nuevo", e -> {
+            limpiarLaboratorio();
+            Notification.show("Formulario listo para un nuevo registro.");
+        });
+        Button guardar = new Button("Guardar", e -> {
+            if (laboratorioSeleccionado != null) {
+                Notification.show("Para modificar, utiliza el botón Editar.");
+                return;
+            }
+            guardarLaboratorio();
+        });
+        Button editar = new Button("Editar", e -> {
+            if (laboratorioSeleccionado == null) {
+                Notification.show("Selecciona un laboratorio para editar.");
+                return;
+            }
+            guardarLaboratorio();
+        });
         Button limpiar = new Button("Limpiar", e -> limpiarLaboratorio());
         Button eliminar = new Button("Eliminar", e -> eliminarLaboratorio());
 
@@ -237,7 +273,7 @@ public class MainView extends VerticalLayout {
         return new VerticalLayout(
                 new H2("Gestión de laboratorios"),
                 formulario,
-                new HorizontalLayout(guardar, limpiar, eliminar),
+                new HorizontalLayout(nuevo, guardar, editar, limpiar, eliminar),
                 gridLaboratorios
         );
     }
@@ -350,7 +386,24 @@ public class MainView extends VerticalLayout {
         FormLayout formulario = new FormLayout();
         formulario.add(nombreMedicamento, comboLaboratorio, activoMedicamento);
 
-        Button guardar = new Button("Guardar", e -> guardarMedicamento());
+        Button nuevo = new Button("Nuevo", e -> {
+            limpiarMedicamento();
+            Notification.show("Formulario listo para un nuevo registro.");
+        });
+        Button guardar = new Button("Guardar", e -> {
+            if (medicamentoSeleccionado != null) {
+                Notification.show("Para modificar, utiliza el botón Editar.");
+                return;
+            }
+            guardarMedicamento();
+        });
+        Button editar = new Button("Editar", e -> {
+            if (medicamentoSeleccionado == null) {
+                Notification.show("Selecciona un medicamento para editar.");
+                return;
+            }
+            guardarMedicamento();
+        });
         Button limpiar = new Button("Limpiar", e -> limpiarMedicamento());
         Button eliminar = new Button("Eliminar", e -> eliminarMedicamento());
 
@@ -370,7 +423,7 @@ public class MainView extends VerticalLayout {
         return new VerticalLayout(
                 new H2("Gestión de medicamentos"),
                 formulario,
-                new HorizontalLayout(guardar, limpiar, eliminar),
+                new HorizontalLayout(nuevo, guardar, editar, limpiar, eliminar),
                 gridMedicamentos
         );
     }
@@ -487,9 +540,64 @@ public class MainView extends VerticalLayout {
                 activoInventario
         );
 
-        Button guardar = new Button("Guardar", e -> guardarInventario());
+        Button nuevo = new Button("Nuevo", e -> {
+            limpiarInventario();
+            Notification.show("Formulario listo para un nuevo registro.");
+        });
+        Button guardar = new Button("Guardar", e -> {
+            if (inventarioSeleccionado != null) {
+                Notification.show("Para modificar, utiliza el botón Editar.");
+                return;
+            }
+            guardarInventario();
+        });
+        Button editar = new Button("Editar", e -> {
+            if (inventarioSeleccionado == null) {
+                Notification.show("Selecciona un registro de inventario para editar.");
+                return;
+            }
+            guardarInventario();
+        });
         Button limpiar = new Button("Limpiar", e -> limpiarInventario());
         Button eliminar = new Button("Eliminar", e -> eliminarInventario());
+
+        // Descargar reporte Excel
+        StreamResource recursoExcel = new StreamResource(
+                "Reporte_Inventario.xlsx",
+                () -> {
+                    try {
+                        return new ByteArrayInputStream(
+                                reporteExcelService.generarReporteInventario()
+                        );
+                    } catch (IOException ex) {
+                        throw new RuntimeException(
+                                "Error al generar el reporte Excel", ex);
+                    }
+                }
+        );
+
+        Anchor descargarExcel = new Anchor(
+                recursoExcel, "Descargar Excel");
+        descargarExcel.getElement().setAttribute("download", true);
+
+        // Descargar reporte PDF
+        StreamResource recursoPdf = new StreamResource(
+                "Reporte_Inventario.pdf",
+                () -> {
+                    try {
+                        return new ByteArrayInputStream(
+                                reportePdfService.generarReporteInventario()
+                        );
+                    } catch (DocumentException ex) {
+                        throw new RuntimeException(
+                                "Error al generar el reporte PDF", ex);
+                    }
+                }
+        );
+
+        Anchor descargarPdf = new Anchor(
+                recursoPdf, "Descargar PDF");
+        descargarPdf.getElement().setAttribute("download", true);
 
         gridInventarios.asSingleSelect().addValueChangeListener(event -> {
             inventarioSeleccionado = event.getValue();
@@ -518,7 +626,8 @@ public class MainView extends VerticalLayout {
         return new VerticalLayout(
                 new H2("Control de inventarios"),
                 formulario,
-                new HorizontalLayout(guardar, limpiar, eliminar),
+                new HorizontalLayout(nuevo, guardar, editar, limpiar, eliminar),
+                new HorizontalLayout(descargarExcel, descargarPdf),
                 gridInventarios
         );
     }
@@ -630,7 +739,24 @@ public class MainView extends VerticalLayout {
         FormLayout formulario = new FormLayout();
         formulario.add(estadoVenta, totalVenta, activoVenta);
 
-        Button guardar = new Button("Guardar", e -> guardarVenta());
+        Button nuevo = new Button("Nuevo", e -> {
+            limpiarVenta();
+            Notification.show("Formulario listo para un nuevo registro.");
+        });
+        Button guardar = new Button("Guardar", e -> {
+            if (ventaSeleccionada != null) {
+                Notification.show("Para modificar, utiliza el botón Editar.");
+                return;
+            }
+            guardarVenta();
+        });
+        Button editar = new Button("Editar", e -> {
+            if (ventaSeleccionada == null) {
+                Notification.show("Selecciona una venta para editar.");
+                return;
+            }
+            guardarVenta();
+        });
         Button limpiar = new Button("Limpiar", e -> limpiarVenta());
         Button eliminar = new Button("Eliminar", e -> eliminarVenta());
 
@@ -655,7 +781,7 @@ public class MainView extends VerticalLayout {
         return new VerticalLayout(
                 new H2("Gestión de ventas"),
                 formulario,
-                new HorizontalLayout(guardar, limpiar, eliminar),
+                new HorizontalLayout(nuevo, guardar, editar, limpiar, eliminar),
                 gridVentas
         );
     }
@@ -724,7 +850,7 @@ public class MainView extends VerticalLayout {
         }
 
         try {
-            crudService.eliminar(Venta.class, ventaSeleccionada.getId());
+            inventarioVentaService.eliminarVentaCompleta(ventaSeleccionada.getId());
 
             Notification.show("Venta eliminada.");
             limpiarVenta();
@@ -765,6 +891,12 @@ public class MainView extends VerticalLayout {
                         : "Sin medicamento"
         ).setHeader("Medicamento");
 
+        gridDetallesVenta.addColumn(
+                d -> d.getInventario() != null
+                        ? d.getInventario().getLote()
+                        : "Sin lote histórico"
+        ).setHeader("Lote descontado");
+
         gridDetallesVenta.addColumn(DetalleVenta::getCantidad).setHeader("Cantidad");
         gridDetallesVenta.addColumn(DetalleVenta::getSubtotal).setHeader("Subtotal");
         gridDetallesVenta.addColumn(DetalleVenta::getEstadoActivo).setHeader("Activo");
@@ -779,7 +911,24 @@ public class MainView extends VerticalLayout {
                 activoDetalleVenta
         );
 
-        Button guardar = new Button("Guardar", e -> guardarDetalleVenta());
+        Button nuevo = new Button("Nuevo", e -> {
+            limpiarDetalleVenta();
+            Notification.show("Formulario listo para un nuevo registro.");
+        });
+        Button guardar = new Button("Guardar", e -> {
+            if (detalleVentaSeleccionado != null) {
+                Notification.show("Para modificar, utiliza el botón Editar.");
+                return;
+            }
+            guardarDetalleVenta();
+        });
+        Button editar = new Button("Editar", e -> {
+            if (detalleVentaSeleccionado == null) {
+                Notification.show("Selecciona un detalle de venta para editar.");
+                return;
+            }
+            guardarDetalleVenta();
+        });
         Button limpiar = new Button("Limpiar", e -> limpiarDetalleVenta());
         Button eliminar = new Button("Eliminar", e -> eliminarDetalleVenta());
 
@@ -814,7 +963,7 @@ public class MainView extends VerticalLayout {
         return new VerticalLayout(
                 new H2("Detalles de venta"),
                 formulario,
-                new HorizontalLayout(guardar, limpiar, eliminar),
+                new HorizontalLayout(nuevo, guardar, editar, limpiar, eliminar),
                 gridDetallesVenta
         );
     }
@@ -859,9 +1008,9 @@ public class MainView extends VerticalLayout {
             detalle.setEstadoActivo(activoDetalleVenta.getValue());
 
             if (esNuevo) {
-                crudService.guardar(detalle);
+                inventarioVentaService.registrarDetalle(detalle);
             } else {
-                crudService.actualizar(detalle);
+                inventarioVentaService.actualizarDetalle(detalle);
             }
 
             Notification.show("Detalle de venta guardado.");
@@ -894,8 +1043,7 @@ public class MainView extends VerticalLayout {
         }
 
         try {
-            crudService.eliminar(
-                    DetalleVenta.class,
+            inventarioVentaService.eliminarDetalle(
                     detalleVentaSeleccionado.getId()
             );
 
@@ -927,7 +1075,24 @@ public class MainView extends VerticalLayout {
         FormLayout formulario = new FormLayout();
         formulario.add(nombreFormula, activoFormula);
 
-        Button guardar = new Button("Guardar", e -> guardarFormula());
+        Button nuevo = new Button("Nuevo", e -> {
+            limpiarFormula();
+            Notification.show("Formulario listo para un nuevo registro.");
+        });
+        Button guardar = new Button("Guardar", e -> {
+            if (formulaSeleccionada != null) {
+                Notification.show("Para modificar, utiliza el botón Editar.");
+                return;
+            }
+            guardarFormula();
+        });
+        Button editar = new Button("Editar", e -> {
+            if (formulaSeleccionada == null) {
+                Notification.show("Selecciona una fórmula para editar.");
+                return;
+            }
+            guardarFormula();
+        });
         Button limpiar = new Button("Limpiar", e -> limpiarFormula());
         Button eliminar = new Button("Eliminar", e -> eliminarFormula());
 
@@ -946,7 +1111,7 @@ public class MainView extends VerticalLayout {
         return new VerticalLayout(
                 new H2("Gestión de fórmulas"),
                 formulario,
-                new HorizontalLayout(guardar, limpiar, eliminar),
+                new HorizontalLayout(nuevo, guardar, editar, limpiar, eliminar),
                 gridFormulas
         );
     }
@@ -1053,7 +1218,24 @@ public class MainView extends VerticalLayout {
         FormLayout formulario = new FormLayout();
         formulario.add(comboFormula, comboMedicamentoFormula);
 
-        Button guardar = new Button("Guardar relación", e -> guardarFormulaMedicamento());
+        Button nuevo = new Button("Nuevo", e -> {
+            limpiarFormulaMedicamento();
+            Notification.show("Formulario listo para una nueva relación.");
+        });
+        Button guardar = new Button("Guardar", e -> {
+            if (relacionSeleccionada != null) {
+                Notification.show("Para modificar, utiliza el botón Editar.");
+                return;
+            }
+            guardarFormulaMedicamento();
+        });
+        Button editar = new Button("Editar", e -> {
+            if (relacionSeleccionada == null) {
+                Notification.show("Selecciona una relación para editar.");
+                return;
+            }
+            guardarFormulaMedicamento();
+        });
         Button limpiar = new Button("Limpiar", e -> limpiarFormulaMedicamento());
         Button eliminar = new Button("Eliminar", e -> eliminarFormulaMedicamento());
 
@@ -1071,7 +1253,7 @@ public class MainView extends VerticalLayout {
         return new VerticalLayout(
                 new H2("Asociar medicamentos a fórmulas"),
                 formulario,
-                new HorizontalLayout(guardar, limpiar, eliminar),
+                new HorizontalLayout(nuevo, guardar, editar, limpiar, eliminar),
                 gridFormulaMedicamentos
         );
     }

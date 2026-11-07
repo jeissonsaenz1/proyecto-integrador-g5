@@ -32,6 +32,21 @@
     </dependencyManagement>
     
     <dependencies>
+
+        <!-- Generación de documentos PDF -->
+        <dependency>
+            <groupId>com.github.librepdf</groupId>
+            <artifactId>openpdf</artifactId>
+            <version>3.0.5</version>
+        </dependency>
+
+
+        <!-- Generación y exportación de archivos Excel -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>6.0.0</version>
+        </dependency>
         <dependency>
             <groupId>com.vaadin</groupId>
             <!-- Replace artifactId with vaadin-core to use only free components -->

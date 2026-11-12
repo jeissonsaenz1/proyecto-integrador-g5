@@ -129,6 +129,7 @@ public class CrudService {
                 "SELECT DISTINCT v FROM Venta v " +
                 "LEFT JOIN FETCH v.detalles d " +
                 "LEFT JOIN FETCH d.medicamento " +
+                "LEFT JOIN FETCH d.inventario " +
                 "ORDER BY v.id DESC",
                 Venta.class
         ).getResultList();
@@ -144,6 +145,7 @@ public class CrudService {
         return entityManager.createQuery(
                 "SELECT d FROM DetalleVenta d " +
                 "LEFT JOIN FETCH d.medicamento " +
+                "LEFT JOIN FETCH d.inventario " +
                 "LEFT JOIN FETCH d.venta " +
                 "ORDER BY d.id",
                 DetalleVenta.class

@@ -28,6 +28,17 @@ public class DetalleVenta {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "medicamento_id", nullable = false)
     private Medicamento medicamento;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "inventario_id")
+    private Inventario inventario;
+
+    public Inventario getInventario() {
+    return inventario;
+    }
+
+    public void setInventario(Inventario inventario) {
+    this.inventario = inventario;
+    }
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "venta_id", nullable = false)

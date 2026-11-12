@@ -20,8 +20,7 @@ replay_pid*
 # Archivos pendientes de los compañeros
 /src/main/java/com/example/model/DetalleVenta.java
 /src/main/java/com/example/model/Venta.java
-/src/main/java/com/example/model/FormulaMedicamento.java
-/src/main/java/com/example/model/Formula.java
+
 
 # Configuración con credenciales privadas
 /src/main/resources/application.properties
